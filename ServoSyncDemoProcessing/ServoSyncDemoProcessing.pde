@@ -4,7 +4,8 @@ final int fps = 30;
 final int BAUD_RATE = 230400;
 
 Serial port;
-final String serialName = "COM4";
+//final String serialName = "COM4";
+final String serialName = "/dev/ttyUSB0";
 
 byte[] data = new byte[2];
 boolean keys[] = new boolean[2];  // key statuses
