@@ -1,3 +1,5 @@
+#include<Wire.h>
+#include<VL53L0X.h>
 #include <Adafruit_SSD1306.h>
 #include<ESP32Servo.h>
 #define BUTTON0 34
@@ -7,6 +9,9 @@
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1;
 Servo servo2;
+VL53L0X sensor;
+
+const byte minDistance = 50;
 
 void setup() {
   //Set buttons
@@ -26,6 +31,12 @@ void setup() {
 
   //Start serial
   Serial.begin(9600);
+
+  //Set sensor
+  if(! sensor.init()){
+    Serial.println("ERRROR!!! sensor not initialized");
+    while(true){}
+  }
 }
 
 int playing = 0; //Whether or not the game has started
@@ -55,6 +66,22 @@ void menu(){
 int can_move1 = 1; //Can servo 1 move?
 int can_move2 = 1; //Can servo 2 move? 
 
+byte canServoMove(int can_move){ //why not a boolean?
+  boolean can;
+  if(sensor.readRangeSingleMillimeters() < minDistance){
+    can = false;
+  }else{
+    can = true;
+  }
+  if(!can){//servo cannot move, therefore, return -1;
+    return -1;
+  }else if(can_move == 1 || can_move == 0){//servo can move, and servo already can continue, therfore carryon
+    return 0;
+  }else{//start moving
+    return 1;
+  }
+}
+
 void game(){
   randomSeed(analogRead(A13)); // sample analog pin as random seed
   int seconds = random(10, 20); //pick random time between 10 and 15 seconds
@@ -68,8 +95,9 @@ void game(){
     lcd.display();
 
     //Check whether servos can move
-
-
+    can_move1 = canServoMove(can_move1);
+    //TODO: Rotate sensor 180 degrees, to see if other servo can move
+    can_move2 = canServoMove(can_move2);
     //increment time
     delay(1000);
     seconds--;
