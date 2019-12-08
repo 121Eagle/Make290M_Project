@@ -1,6 +1,7 @@
-include <Adafruit_SSD1306.h>
+#include <Adafruit_SSD1306.h>
 #include<ESP32Servo.h>
 #include<Wire.h>
+#include<VL53L0X.h>
 
 #define BUTTON0 34
 #define BUTTON1 0
@@ -8,6 +9,7 @@ include <Adafruit_SSD1306.h>
 
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1, servo2;
+VL53L0X sensor;
 
 void setup() {
   //Set buttons
@@ -19,6 +21,10 @@ void setup() {
   servo1.attach(23);
   servo2.attach(18);
   servo1.write(90), servo2.write(90);
+
+  //Start IR sensors
+  sensor.init();
+  sensor.startContinuous();
   
   // Start LCD scren
   lcd.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -55,7 +61,31 @@ void menu(){
     }else if(processing_input[2]){
       playing = 3;
     }
+
+    //Make sure servos are stopped
+    servo1.write(90), servo2.write(90);
   }
+}
+
+/* Checks the IR sensor and returns
+  0: if the servo can move
+  1: if the servo is too far
+  -1: if the servo is too close
+*/
+
+const int maxDistance = 220; //farthest the servo can get
+const int minDistance = 50; //closest the servo can get
+
+int canMove(){
+    //Check whether top servo can move
+    int range = sensor.readRangeContinuousMillimeters();
+    if(range < minDistance){
+      return -1;
+    }else if (range > maxDistance){
+      return 1;
+    }else{
+      return 0;
+    }
 }
 
 /* Runs the game */
@@ -87,16 +117,19 @@ void game(){
       
       playing = 0;
     }
-    
-    //Check whether top servo can move
-    can_move1 = 1; //TODO: input IR sensor function
-    if(can_move1){ 
-      //If it can, random chance to turn around
+
+    //Check if servo1 can move
+    can_move1 = canMove();
+    if(can_move1 == 1){ 
+      //If too far, write CW
+      servo1.write(80);
+    }else if(can_move1 == -1){
+      //If too close, write CCW
+      servo1.write(100);
     }else{
-      //Otherwise force it to turn around
-      auto_speed *= -1;
+      servo1.write(100);
     }
-    servo1.write(90+auto_speed);
+    
 
     //Check input
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
