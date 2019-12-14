@@ -56,9 +56,11 @@ void menu(){
   lcd.setCursor(0,0);
   lcd.print("SELECT DIFFICULTY");
   lcd.setCursor(0,8);
-  lcd.print("1 2 3");
+  lcd.print("BUTTON0: EASY");
   lcd.setCursor(0,16);
-  lcd.print("(Use keyboard)");
+  lcd.print("BUTTON1: NORMAL");
+  lcd.setCursor(0,24);
+  lcd.print("BUTTON2: HARD");
   lcd.display();
   
   Serial.println("*** BEGIN MENU ***");
@@ -66,8 +68,7 @@ void menu(){
   while(playing <= 0){
     current_time = millis();
     
-    //Check input for start. Use number for difficulty
-    byte processing_input[3];
+    //Check input for start. Use number for difficulty\
 
     //button 0 - reverse speed
     byte curr_state = digitalRead(BUTTON0); 
@@ -101,11 +102,12 @@ void menu(){
 /* Runs the game */
 void game(){
   randomSeed(analogRead(A13)); // sample analog pin as random seed
-  int seconds = random(20, 30); //pick random time between 10 and 15 seconds
+  int seconds = 25; //pick random time between 10 and 15 seconds
   unsigned long current_time = millis(); //current time in milliseconds
   unsigned long end_time = current_time+seconds*1000; //Set end time
   unsigned long change_direction = current_time; //how long until 
-  int auto_speed = 20; //Holds the current speed of servo
+  int auto_speed = playing*5+5; //Holds the current speed of servo
+  int man_speed = 90; //speed of manually controlled servo
   
   Serial.println("*** BEGIN CLAW GAME ***");
   
@@ -128,12 +130,11 @@ void game(){
       
       //Check sensor and determine whether you were lined up or not
       lcd.setCursor(0,8);
-      /*
       if(sensor.readRangeSingleMillimeters() > 100){
         lcd.print("TOO FAR");
       }else{
         lcd.print("YOU WIN");
-      }*/
+      }
       lcd.display();
       
       delay(3000);
@@ -158,30 +159,43 @@ void game(){
         Serial.println(String(90+auto_speed));
         servo1.write(90+auto_speed);
         auto_speed *= -1;
-        change_direction += random(3000, 6000);
+        change_direction += random(3000+(3000-playing*1000), 5000+(3000-playing*1000));
       }
       
       //Check input
-      //NOTE: Button 0 should go up and button 2 should go down
-      if(digitalRead(BUTTON0)){
-        servo2.write(70);
-      }else if(digitalRead(BUTTON2)){
-        servo2.write(110);
-      }else{
-        servo2.write(90);
+      //button 0
+      byte curr_state = digitalRead(BUTTON0); 
+      if((curr_state==0 && prev_state[0]==1) && (current_time-last_flip[0]>=100)){
+        Serial.println("BUTTON0");
+        Serial.println(String(man_speed));
+        if(man_speed < 110) man_speed += 20;
+        last_flip[0] = current_time;
       }
+      prev_state[0] = curr_state;
 
       //button 1
-      byte curr_state = digitalRead(BUTTON1); 
+      curr_state = digitalRead(BUTTON1); 
       if((curr_state==0 && prev_state[1]==1) && (current_time-last_flip[1]>=100)){ 
         Serial.println("BUTTON 1");
         end_time = 0.0;
         last_flip[1] = current_time;
       }
       prev_state[1] = curr_state;
-    }
-  }
-}
+
+      //button 2
+      curr_state = digitalRead(BUTTON2); 
+      if((curr_state==0 && prev_state[2]==1) && (current_time-last_flip[2]>=100)){ 
+        Serial.print("BUTTON 2");
+        Serial.println(String(man_speed));
+        if(man_speed > 70) man_speed -= 20;
+        last_flip[2] = current_time;
+      }
+      prev_state[2] = curr_state;
+
+      servo2.write(man_speed);
+    }//end else
+  }//end while
+}//end function
 
 void loop() {
   // put your main code here, to run repeatedly:
