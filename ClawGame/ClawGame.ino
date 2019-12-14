@@ -5,16 +5,7 @@
 
 #define BUTTON0 34
 #define BUTTON1 0
-#define BUTTON2 3
-
-#ifndef UP_BUTTON
-#define UP_BUTTON BUTTON0
-#endif
-const byte up = UP_BUTTON;
-#ifndef DOWN_BUTTON
-#define DOWN_BUTTON BUTTON2
-#endif
-const byte down = DOWN_BUTTON;
+#define BUTTON2 35
 
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1, servo2;
@@ -110,11 +101,11 @@ void menu(){
 /* Runs the game */
 void game(){
   randomSeed(analogRead(A13)); // sample analog pin as random seed
-  int seconds = random(5, 10); //pick random time between 10 and 15 seconds
+  int seconds = random(20, 30); //pick random time between 10 and 15 seconds
   unsigned long current_time = millis(); //current time in milliseconds
   unsigned long end_time = current_time+seconds*1000; //Set end time
   unsigned long change_direction = current_time; //how long until 
-  int auto_speed = 10; //Holds the current speed of servo
+  int auto_speed = 20; //Holds the current speed of servo
   
   Serial.println("*** BEGIN CLAW GAME ***");
   
@@ -137,11 +128,12 @@ void game(){
       
       //Check sensor and determine whether you were lined up or not
       lcd.setCursor(0,8);
+      /*
       if(sensor.readRangeSingleMillimeters() > 100){
         lcd.print("TOO FAR");
       }else{
         lcd.print("YOU WIN");
-      }
+      }*/
       lcd.display();
       
       delay(3000);
@@ -166,7 +158,7 @@ void game(){
         Serial.println(String(90+auto_speed));
         servo1.write(90+auto_speed);
         auto_speed *= -1;
-        change_direction += random(5000, 10000);
+        change_direction += random(3000, 6000);
       }
       
       //Check input
@@ -179,16 +171,14 @@ void game(){
         servo2.write(90);
       }
 
-      /*
       //button 1
-      curr_state = digitalRead(BUTTON1); 
+      byte curr_state = digitalRead(BUTTON1); 
       if((curr_state==0 && prev_state[1]==1) && (current_time-last_flip[1]>=100)){ 
         Serial.println("BUTTON 1");
-        processing_input[1] = 1;
+        end_time = 0.0;
         last_flip[1] = current_time;
       }
       prev_state[1] = curr_state;
-      */
     }
   }
 }
