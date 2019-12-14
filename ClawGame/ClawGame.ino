@@ -5,13 +5,16 @@
 
 #define BUTTON0 34
 #define BUTTON1 0
-#define BUTTON2 35
+#define BUTTON2 3
 
-#ifdef MOVEMENT_BUTTON
-const byte move_button = MOVEMENT_BUTTON;
-#else
-const byte move_button = BUTTON1;
+#ifndef UP_BUTTON
+#define UP_BUTTON BUTTON0
 #endif
+const byte up = UP_BUTTON;
+#ifndef DOWN_BUTTON
+#define DOWN_BUTTON BUTTON2
+#endif
+const byte down = DOWN_BUTTON;
 
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1, servo2;
@@ -44,11 +47,14 @@ void setup() {
 
 int playing = 0; //Whether or not the game has started. Also indicates difficulty (1-3)
 byte processing_input[3];
-volatile bool movement = 0;
+volatile byte movement = 0;
 
-void ATTR_ITTR moveServo(){
-  delayMicroseconds(20000000);
-  movement != movement;
+void IRAM_ATTR moveUp(){
+  movement = 1-movement;
+}
+
+void IRAM_ATTR moveDown(){
+  movement = -1 - movement;
 }
 
 /* A menu for holding the game until a button is pressed.*/
@@ -64,7 +70,8 @@ void menu(){
   lcd.display();
   
   while(playing == 0){
-    attachInterrupt(digitalPinToInterrupt(move_button), moveServo, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(up), moveUp, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(down), moveDown, CHANGE);
     //Check input for start. Use number for difficulty
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
     if(processing_input[0]){
@@ -74,7 +81,8 @@ void menu(){
     }else if(processing_input[2]){
       playing = 3;
     }
-    detachInterrupt(digitalPinToInterrupt(move_button));
+    detachInterrupt(digitalPinToInterrupt(up));
+    detachInterrupt(digitalPinToInterrupt(down));
     //Make sure servos are stopped
     servo1.write(90), servo2.write(90);
   }
