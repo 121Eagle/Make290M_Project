@@ -81,11 +81,11 @@ void menu(){
     }else if(processing_input[2]){
       playing = 3;
     }
-    detachInterrupt(digitalPinToInterrupt(up));
-    detachInterrupt(digitalPinToInterrupt(down));
     //Make sure servos are stopped
     servo1.write(90), servo2.write(90);
   }
+  detachInterrupt(digitalPinToInterrupt(up));
+  detachInterrupt(digitalPinToInterrupt(down));
 }
 
 /* Checks the IR sensor and returns
@@ -156,7 +156,9 @@ void game(){
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
     
     //Check whether bottom servo can move in the inputted direction
-    can_move2 = 1; //TODO: input IR sensor function
+    /**Ignoring this code for right now
+    *can_move2 = 1; //TODO: input IR sensor function
+    
     if(processing_input[0] && can_move1 != 1){
       servo2.write(100);
     }else if(processing_input[2] && can_move1 != -1){
@@ -164,6 +166,8 @@ void game(){
     }else{
       servo2.write(90);
     }
+    */
+    servo2.write(90 + (45 * movement));
   
     //draw lcd
     lcd.clearDisplay();
