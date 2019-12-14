@@ -24,6 +24,11 @@ void draw(){
     fill(keys[i]?0:255);
     ellipse(i*100+D/2+5, 50, D, D);
   }
+  
+  while(port.available() > 0){ 
+    int inByte = port.read();
+    println(inByte);
+  }
 }
 
 void keyPressed() {

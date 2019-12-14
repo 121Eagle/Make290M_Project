@@ -12,6 +12,11 @@ Servo servo1, servo2;
 VL53L0X sensor;
 
 void setup() {
+  //Start serial
+  Serial.begin(230400);
+  Wire.begin();
+  Serial.println("*** SETUP CLAW GAME ***");
+  
   //Set buttons
   pinMode(BUTTON0, INPUT_PULLUP);
   pinMode(BUTTON1, INPUT_PULLUP);
@@ -31,16 +36,21 @@ void setup() {
   lcd.setTextColor(WHITE);
   lcd.clearDisplay();
   lcd.display(); 
-
-  //Start serial
-  Serial.begin(230400);
 }
 
 int playing = 0; //Whether or not the game has started. Also indicates difficulty (1-3)
-byte processing_input[3];
+
+unsigned long last_flip[] = {0.0, 0.0, 0.0};
+byte prev_state[] = {1, 1, 1};
 
 /* A menu for holding the game until a button is pressed.*/
 void menu(){
+  unsigned long current_time = millis();
+  playing = 0;
+  
+  //Make sure servos are stopped
+  servo1.write(90), servo2.write(90);
+  
   //Write menu
   lcd.clearDisplay();
   lcd.setCursor(0,0);
@@ -51,64 +61,80 @@ void menu(){
   lcd.print("(Use keyboard)");
   lcd.display();
   
-  while(playing == 0){
+  Serial.println("*** BEGIN MENU ***");
+  
+  while(playing <= 0){
+    current_time = millis();
+    
     //Check input for start. Use number for difficulty
-    if(Serial.available()){ Serial.readBytes(processing_input,3); }
-    if(processing_input[0]){
+    byte processing_input[3];
+
+    //button 0 - reverse speed
+    byte curr_state = digitalRead(BUTTON0); 
+    if((curr_state==0 && prev_state[0]==1) && (current_time-last_flip[0]>=100)){ 
+      Serial.println("BUTTON 0");
       playing = 1;
-    }else if(processing_input[1]){
+      last_flip[0] = current_time;
+    }
+    prev_state[0] = curr_state;
+  
+    //button 1 - pause/resume
+    curr_state = digitalRead(BUTTON1); 
+    if((curr_state==0 && prev_state[1]==1) && (current_time-last_flip[1]>=100)){ 
+      Serial.println("BUTTON 1");
       playing = 2;
-    }else if(processing_input[2]){
+      last_flip[1] = current_time;
+    }
+    prev_state[1] = curr_state;
+  
+    //button 2 - halve frame delay
+    curr_state = digitalRead(BUTTON2); 
+    if((curr_state==0 && prev_state[2]==1) && (current_time-last_flip[2]>=100)){ 
+      Serial.println("BUTTON 2"); 
       playing = 3;
+      last_flip[2] = current_time;
     }
-
-    //Make sure servos are stopped
-    servo1.write(90), servo2.write(90);
+    prev_state[2] = curr_state;
   }
-}
-
-/* Checks the IR sensor and returns
-  0: if the servo can move
-  1: if the servo is too far
-  -1: if the servo is too close
-*/
-
-const int maxDistance = 220; //farthest the servo can get
-const int minDistance = 50; //closest the servo can get
-
-int canMove(){
-    //Check whether top servo can move
-    int range = sensor.readRangeContinuousMillimeters();
-    if(range < minDistance){
-      return -1;
-    }else if (range > maxDistance){
-      return 1;
-    }else{
-      return 0;
-    }
-}
+} 
 
 /* Runs the game */
 void game(){
   randomSeed(analogRead(A13)); // sample analog pin as random seed
-  int seconds = random(10, 20); //pick random time between 10 and 15 seconds
+  int seconds = random(5, 10); //pick random time between 10 and 15 seconds
   unsigned long current_time = millis(); //current time in milliseconds
   unsigned long end_time = current_time+seconds*1000; //Set end time
-
-  int can_move1 = 1; //Can servo 1 move?
-  int can_move2 = 1; //Can servo 2 move? 
+  unsigned long change_direction = current_time; //how long until 
   int auto_speed = 10; //Holds the current speed of servo
-  unsigned long last_flip = current_time; //Holds the last time the auto motor was flipped
-
+  
+  Serial.println("*** BEGIN CLAW GAME ***");
+  
   //game loop
   while(playing != 0){
     current_time = millis(); //Set time
-
+    
     //Check for end of game
     if(current_time >= end_time){
+      Serial.println("*** END OF CLAW GAME ***");
       
-      //Write to electromagnet to drop the ball
-
+      //Stop servos
+      servo1.write(90);
+      servo2.write(90);
+      
+      //draw lcd
+      lcd.clearDisplay();
+      lcd.setCursor(0,0);
+      lcd.print("GAME OVER");
+      
+      //Check sensor and determine whether you were lined up or not
+      lcd.setCursor(0,8);
+      if(sensor.readRangeSingleMillimeters() > 100){
+        lcd.print("TOO FAR");
+      }else{
+        lcd.print("YOU WIN");
+      }
+      lcd.display();
+      
       delay(3000);
       
       //Check whether or not it landed on the hoop
@@ -116,41 +142,45 @@ void game(){
       //Reset electromagnet
       
       playing = 0;
-    }
-
-    //Check if servo1 can move
-    can_move1 = canMove();
-    if(can_move1 == 1){ 
-      //If too far, write CW
-      servo1.write(80);
-    }else if(can_move1 == -1){
-      //If too close, write CCW
-      servo1.write(100);
     }else{
-      servo1.write(100);
-    }
-    
+      //draw lcd
+      lcd.clearDisplay();
+      lcd.setCursor(0,0);
+      lcd.print("PLAYING...");
+      lcd.setCursor(0,8);
+      lcd.print(String((end_time-current_time)/1000));
+      lcd.display();
 
-    //Check input
-    if(Serial.available()){ Serial.readBytes(processing_input,3); }
-    
-    //Check whether bottom servo can move in the inputted direction
-    can_move2 = 1; //TODO: input IR sensor function
-    if(processing_input[0] && can_move1 != 1){
-      servo2.write(100);
-    }else if(processing_input[2] && can_move1 != -1){
-      servo2.write(80);
-    }else{
-      servo2.write(90);
+      //Write servo 1
+      if(current_time >= change_direction){
+        Serial.println("CHANGING DIRECTION");
+        Serial.println(String(90+auto_speed));
+        servo1.write(90+auto_speed);
+        auto_speed *= -1;
+        change_direction += random(5000, 10000);
+      }
+      
+      //Check input
+      //NOTE: Button 0 should go up and button 2 should go down
+      if(digitalRead(BUTTON0)){
+        servo2.write(70);
+      }else if(digitalRead(BUTTON2)){
+        servo2.write(110);
+      }else{
+        servo2.write(90);
+      }
+
+      /*
+      //button 1
+      curr_state = digitalRead(BUTTON1); 
+      if((curr_state==0 && prev_state[1]==1) && (current_time-last_flip[1]>=100)){ 
+        Serial.println("BUTTON 1");
+        processing_input[1] = 1;
+        last_flip[1] = current_time;
+      }
+      prev_state[1] = curr_state;
+      */
     }
-  
-    //draw lcd
-    lcd.clearDisplay();
-    lcd.setCursor(0,0);
-    lcd.print("PLAYING...");
-    lcd.setCursor(0,8);
-    lcd.print(String((end_time-current_time)/1000));
-    lcd.display();
   }
 }
 
