@@ -47,14 +47,13 @@ void setup() {
 
 int playing = 0; //Whether or not the game has started. Also indicates difficulty (1-3)
 byte processing_input[3];
-volatile byte movement = 0;
+volatile bool movement = false;
 
-void IRAM_ATTR moveUp(){
-  movement = 1-movement;
+void IRAM_ATTR moveServo2(){
+  movement = true;
 }
-
-void IRAM_ATTR moveDown(){
-  movement = -1 - movement;
+void IRAM_ATTR stopServo2(){
+  movement = false;
 }
 
 /* A menu for holding the game until a button is pressed.*/
@@ -70,8 +69,8 @@ void menu(){
   lcd.display();
   
   while(playing == 0){
-    attachInterrupt(digitalPinToInterrupt(up), moveUp, CHANGE);
-    attachInterrupt(digitalPinToInterrupt(down), moveDown, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(up), moveServo2, FALLING);
+    attachInterrupt(digitalPinToInterrupt(down), stopServo2, FALLING);
     //Check input for start. Use number for difficulty
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
     if(processing_input[0]){
@@ -156,9 +155,8 @@ void game(){
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
     
     //Check whether bottom servo can move in the inputted direction
-    /**Ignoring this code for right now
-    *can_move2 = 1; //TODO: input IR sensor function
-    
+    can_move2 = 1; //TODO: input IR sensor function
+    /*
     if(processing_input[0] && can_move1 != 1){
       servo2.write(100);
     }else if(processing_input[2] && can_move1 != -1){
@@ -167,7 +165,11 @@ void game(){
       servo2.write(90);
     }
     */
-    servo2.write(90 + (45 * movement));
+    if (movement){
+      servo2.write(135);
+    }else{
+      servo2.write(90);
+    }
   
     //draw lcd
     lcd.clearDisplay();
