@@ -130,11 +130,14 @@ void game(){
       
       //Check sensor and determine whether you were lined up or not
       lcd.setCursor(0,8);
-      if(sensor.readRangeSingleMillimeters() > 100){
+      if(sensor.readRangeSingleMillimeters() > 350){
         lcd.print("TOO FAR");
       }else{
         lcd.print("YOU WIN");
       }
+
+      lcd.setCursor(0,16);
+      lcd.print(String(sensor.readRangeSingleMillimeters()));
       lcd.display();
       
       delay(3000);
