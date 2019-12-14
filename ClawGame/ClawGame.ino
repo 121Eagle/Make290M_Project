@@ -7,6 +7,12 @@
 #define BUTTON1 0
 #define BUTTON2 35
 
+#ifdef MOVEMENT_BUTTON
+const byte move_button = MOVEMENT_BUTTON;
+#else
+const byte move_button = BUTTON1;
+#endif
+
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1, servo2;
 VL53L0X sensor;
@@ -38,6 +44,12 @@ void setup() {
 
 int playing = 0; //Whether or not the game has started. Also indicates difficulty (1-3)
 byte processing_input[3];
+volatile bool movement = 0;
+
+void ATTR_ITTR moveServo(){
+  delayMicroseconds(20000000);
+  movement != movement;
+}
 
 /* A menu for holding the game until a button is pressed.*/
 void menu(){
@@ -52,6 +64,7 @@ void menu(){
   lcd.display();
   
   while(playing == 0){
+    attachInterrupt(digitalPinToInterrupt(move_button), moveServo, CHANGE);
     //Check input for start. Use number for difficulty
     if(Serial.available()){ Serial.readBytes(processing_input,3); }
     if(processing_input[0]){
@@ -61,7 +74,7 @@ void menu(){
     }else if(processing_input[2]){
       playing = 3;
     }
-
+    detachInterrupt(digitalPinToInterrupt(move_button));
     //Make sure servos are stopped
     servo1.write(90), servo2.write(90);
   }
