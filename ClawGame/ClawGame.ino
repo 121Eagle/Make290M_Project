@@ -5,7 +5,16 @@
 
 #define BUTTON0 34
 #define BUTTON1 0
-#define BUTTON2 35
+#define BUTTON2 3
+
+#ifndef UP_BUTTON
+#define UP_BUTTON BUTTON0
+#endif
+const byte up = UP_BUTTON;
+#ifndef DOWN_BUTTON
+#define DOWN_BUTTON BUTTON2
+#endif
+const byte down = DOWN_BUTTON;
 
 Adafruit_SSD1306 lcd(128, 64);
 Servo servo1, servo2;
